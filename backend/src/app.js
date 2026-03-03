@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const app = express();
 const authRoutes = require("./routes/auth.routes");
+const eventRoutes = require("./routes/event.routes");
 
 // Cấu hình CORS chi tiết - ĐÂY LÀ PHẦN QUAN TRỌNG CẦN SỬA
 app.use(cors({
@@ -21,5 +22,6 @@ app.get('/', (req, res) => {
 
 // Routes
 app.use("/api", authRoutes);
+app.use("/api", eventRoutes);
 
 module.exports = app;

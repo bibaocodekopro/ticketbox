@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import UserLayout from "../layouts/UserLayout.vue";
 import UserHome from "../views/user/index.vue";
 import MyTickets from "../views/user/MyTickets.vue";
+import EventDetail from "../views/user/EventDetail.vue";
 import AdminDashboard from "../views/admin/AdminDashboard.vue";
 import Login from "../views/user/Login.vue";
 import Register from "../views/user/Register.vue";
@@ -15,6 +16,11 @@ const routes = [
         path: "",
         name: "UserHome",
         component: UserHome,
+      },
+      {
+        path: "events/:id",
+        name: "EventDetail",
+        component: EventDetail,
       },
       {
         path: "my-tickets",

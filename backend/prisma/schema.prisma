@@ -15,6 +15,7 @@ model event {
   venueId     Int
   venue       venue    @relation(fields: [venueId], references: [id], map: "Event_venueId_fkey")
   seat        seat[]
+  image       String?
 
   @@index([venueId], map: "Event_venueId_fkey")
 }

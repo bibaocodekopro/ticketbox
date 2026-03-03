@@ -1,137 +1,228 @@
 <script setup>
-const events = [
-  {
-    id: 1,
-    title: "PSYCHIC FEVER First Fan Meeting in Vietnam",
-    price: "From 990,000 VND",
-    date: "March 05, 2026",
-    image: "https://picsum.photos/600/300?random=1",
-  },
-  {
-    id: 2,
-    title: "Spring Concert | Opening Season",
-    price: "From 650,000 VND",
-    date: "March 14, 2026",
-    image: "https://picsum.photos/600/300?random=2",
-  },
-  {
-    id: 3,
-    title: "Special Live Show - Thuy Dung",
-    price: "From 400,000 VND",
-    date: "March 13, 2026",
-    image: "https://picsum.photos/600/300?random=3",
-  },
-  {
-    id: 4,
-    title: "Minh Tuyet & Mai Tien Dung Night",
-    price: "From 500,000 VND",
-    date: "March 06, 2026",
-    image: "https://picsum.photos/600/300?random=4",
-  },
-];
+import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import api from "@/api/axios";
+
+const router = useRouter();
+const category = ref("All");
+const events = ref([]);
+const loading = ref(false);
+
+const categories = computed(() => {
+  const set = new Set(
+    events.value
+      .map((e) => e.category)
+      .filter(Boolean),
+  );
+  return ["All", ...Array.from(set)];
+});
+
+const filteredEvents = computed(() => {
+  if (category.value === "All") return events.value;
+  return events.value.filter((e) => e.category === category.value);
+});
+
+const priceText = (v) => {
+  if (v == null) return "Đang cập nhật";
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+  }).format(v);
+};
+
+const dateText = (iso) => {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  return new Intl.DateTimeFormat("vi-VN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+};
+
+const goDetail = (id) => router.push(`/events/${id}`);
+
+const fetchEvents = async () => {
+  loading.value = true;
+  try {
+    const res = await api.get("/events");
+    events.value = res.data || [];
+  } catch (err) {
+    console.error(err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+onMounted(fetchEvents);
 </script>
 
 <template>
-  <div class="home-container">
-    <h2 class="section-title">Live Music</h2>
-
-    <div class="event-scroll">
-      <div class="event-card" v-for="event in events" :key="event.id">
-        <img :src="event.image" class="event-image" />
-
-        <div class="event-content">
-          <h3 class="event-title">{{ event.title }}</h3>
-          <p class="event-price">{{ event.price }}</p>
-          <p class="event-date">
-            <calendar-outlined />
-            {{ event.date }}
-          </p>
-        </div>
+  <div class="home">
+    <a-card class="hero" :bordered="false">
+      <div class="hero-title">Discover events</div>
+      <div class="hero-sub">
+        Book tickets quickly, follow your favorite events, and manage your tickets.
       </div>
-    </div>
+    </a-card>
 
-    <h2 class="section-title">Stage & Art</h2>
+    <a-space class="mt-16" wrap>
+      <a-segmented v-model:value="category" :options="categories" />
+    </a-space>
 
-    <div class="event-scroll">
-      <div class="event-card" v-for="event in events" :key="'art-' + event.id">
-        <img :src="event.image" class="event-image" />
-        <div class="event-content">
-          <h3 class="event-title">{{ event.title }}</h3>
-          <p class="event-price">{{ event.price }}</p>
-          <p class="event-date">
-            <calendar-outlined />
-            {{ event.date }}
-          </p>
-        </div>
-      </div>
-    </div>
+    <a-row :gutter="[16, 16]" class="mt-16">
+      <a-col
+        v-for="e in filteredEvents"
+        :key="e.id"
+        :xs="24"
+        :sm="12"
+        :md="8"
+        :lg="6"
+      >
+        <a-card
+          hoverable
+          class="event-card"
+          :body-style="{ padding: '12px' }"
+          @click="goDetail(e.id)"
+        >
+          <template #cover>
+            <img class="cover" :src="e.cover" :alt="e.title" />
+          </template>
+
+          <a-space direction="vertical" size="small" style="width: 100%">
+            <a-tag color="geekblue">{{ e.category }}</a-tag>
+            <div class="title">{{ e.title }}</div>
+            <div class="meta">
+              <span>{{ dateText(e.date) }}</span>
+              <span>•</span>
+              <span>{{ e.city }}</span>
+            </div>
+            <div class="price">Từ {{ priceText(e.priceFrom) }}</div>
+            <a-button type="primary" block @click.stop="goDetail(e.id)">
+              Xem chi tiết
+            </a-button>
+          </a-space>
+        </a-card>
+      </a-col>
+    </a-row>
   </div>
 </template>
 
 <style scoped>
-.home-container {
-  min-height: 100vh;
-}
-
-.section-title {
-  color: white;
-  margin-bottom: 16px;
-  font-size: 20px;
-}
-
-.event-scroll {
+.home {
   display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding-bottom: 10px;
+  flex-direction: column;
+  gap: 24px;
 }
 
-.event-scroll::-webkit-scrollbar {
-  height: 6px;
+/* HERO */
+.hero {
+  border-radius: 20px;
+  padding: 32px;
+  background: linear-gradient(
+    135deg,
+    #4f46e5,
+    #7c3aed,
+    #9333ea
+  );
+  color: white;
+  box-shadow: 0 20px 40px rgba(124, 58, 237, 0.25);
 }
 
-.event-scroll::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 4px;
+.hero-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
 }
 
+.hero-sub {
+  margin-top: 8px;
+  opacity: 0.9;
+  font-size: 15px;
+}
+
+/* CARD */
 .event-card {
-  min-width: 320px;
-  background: #1e293b;
-  border-radius: 12px;
+  border-radius: 18px;
   overflow: hidden;
-  cursor: pointer;
-  transition: 0.3s;
+  transition: all 0.3s ease;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
 }
 
 .event-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
 }
 
-.event-image {
+/* IMAGE */
+.cover {
   width: 100%;
-  height: 180px;
+  height: 170px;
   object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
 }
 
-.event-content {
-  padding: 12px;
+.event-card:hover .cover {
+  transform: scale(1.05);
 }
 
-.event-title {
-  color: white;
+/* TITLE */
+.title {
+  font-weight: 700;
   font-size: 15px;
-  margin-bottom: 8px;
+  line-height: 1.4;
+  min-height: 44px;
 }
 
-.event-price {
-  color: #22c55e;
-  font-weight: bold;
-  margin-bottom: 6px;
-}
-
-.event-date {
-  color: #cbd5e1;
+/* META */
+.meta {
   font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* PRICE */
+.price {
+  font-weight: 800;
+  font-size: 16px;
+  color: #4f46e5;
+}
+
+/* BUTTON */
+:deep(.ant-btn-primary) {
+  border-radius: 10px;
+  font-weight: 600;
+  height: 38px;
+}
+
+/* CATEGORY SEGMENT */
+:deep(.ant-segmented) {
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+:deep(.ant-segmented-item-selected) {
+  background: white;
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+@media (max-width: 768px) {
+  .cover {
+    height: 200px;
+  }
+
+  .hero {
+    padding: 24px;
+  }
+
+  .hero-title {
+    font-size: 22px;
+  }
 }
 </style>

@@ -15,7 +15,7 @@ import FooterUser from "../components/footerUser.vue";
 
 <style scoped>
 .app {
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
@@ -26,7 +26,6 @@ import FooterUser from "../components/footerUser.vue";
 }
 
 .content {
-  background: #111827;
   flex: 1;
   padding: 24px;
 }

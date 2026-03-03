@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model event {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  startTime   DateTime
+  venueId     Int
+  venue       venue    @relation(fields: [venueId], references: [id], map: "Event_venueId_fkey")
+  seat        seat[]
+
+  @@index([venueId], map: "Event_venueId_fkey")
+}
+
+model order {
+  id          Int          @id @default(autoincrement())
+  totalAmount Float
+  status      order_status @default(PENDING)
+  userId      Int
+  createdAt   DateTime     @default(now())
+  user        user         @relation(fields: [userId], references: [id], map: "Order_userId_fkey")
+  orderitem   orderitem[]
+  payment     payment?
+
+  @@index([userId], map: "Order_userId_fkey")
+}
+
+model orderitem {
+  id      Int   @id @default(autoincrement())
+  orderId Int
+  seatId  Int   @unique(map: "OrderItem_seatId_key")
+  price   Float
+  order   order @relation(fields: [orderId], references: [id], map: "OrderItem_orderId_fkey")
+  seat    seat  @relation(fields: [seatId], references: [id], map: "OrderItem_seatId_fkey")
+
+  @@index([orderId], map: "OrderItem_orderId_fkey")
+}
+
+model payment {
+  id      Int            @id @default(autoincrement())
+  orderId Int            @unique(map: "Payment_orderId_key")
+  amount  Float
+  status  payment_status @default(PENDING)
+  paidAt  DateTime?
+  order   order          @relation(fields: [orderId], references: [id], map: "Payment_orderId_fkey")
+}
+
+model seat {
+  id         Int         @id @default(autoincrement())
+  seatNumber String
+  price      Float
+  status     seat_status @default(AVAILABLE)
+  eventId    Int
+  orderitem  orderitem?
+  event      event       @relation(fields: [eventId], references: [id], map: "Seat_eventId_fkey")
+
+  @@index([eventId], map: "Seat_eventId_fkey")
+}
+
+model user {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique(map: "User_email_key")
+  password  String
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  order     order[]
+}
+
+model venue {
+  id       Int     @id @default(autoincrement())
+  name     String
+  location String
+  event    event[]
+}
+
+enum order_status {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum payment_status {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum seat_status {
+  AVAILABLE
+  RESERVED
+  SOLD
+}

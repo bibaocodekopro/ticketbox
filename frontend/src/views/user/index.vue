@@ -1,52 +1,48 @@
 <script setup>
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, reactive, watch } from "vue";
 import { useRouter } from "vue-router";
+import { LeftOutlined, RightOutlined } from "@ant-design/icons-vue";
 import api from "@/api/axios";
 
+
 const router = useRouter();
-const category = ref("All");
+const venues = ref([]);
 const events = ref([]);
 const loading = ref(false);
-
-const categories = computed(() => {
-  const set = new Set(
-    events.value
-      .map((e) => e.category)
-      .filter(Boolean),
-  );
-  return ["All", ...Array.from(set)];
-});
-
-const filteredEvents = computed(() => {
-  if (category.value === "All") return events.value;
-  return events.value.filter((e) => e.category === category.value);
-});
-
-const priceText = (v) => {
-  if (v == null) return "Đang cập nhật";
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(v);
+const initialized = ref(false);
+// Lưu ref cho từng thanh cuộn theo index venue
+const scrollers = ref([]);
+const setScrollerRef = (index, el) => {
+  if (el) {
+    scrollers.value[index] = el;
+  }
 };
 
-const dateText = (iso) => {
-  if (!iso) return "-";
-  const d = new Date(iso);
-  return new Intl.DateTimeFormat("vi-VN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
-};
 
 const goDetail = (id) => router.push(`/events/${id}`);
 
-const fetchEvents = async () => {
+const fetchVenue = async () => {
   loading.value = true;
+  initialized.value = false;
+
   try {
-    const res = await api.get("/events");
-    events.value = res.data || [];
+    const res = await api.get("/venues");
+
+    // Lưu tạm
+    const venueData = res.data;
+
+    const venuesHasEvent = venueData.filter(v => v.eventCount > 0);
+
+    // Load batch đầu tiên
+    await Promise.all(
+      venuesHasEvent.map(v => loadEvents(v.id))
+    );
+
+    // Sau khi load xong event rồi mới set venues
+    venues.value = venueData;
+
+    initialized.value = true;
+
   } catch (err) {
     console.error(err);
   } finally {
@@ -54,7 +50,64 @@ const fetchEvents = async () => {
   }
 };
 
-onMounted(fetchEvents);
+const venueEvents = reactive({});
+const loadEvents = async (venueId) => {
+  if (!venueEvents[venueId]) {
+    venueEvents[venueId] = {
+      events: [],
+      offset: 0,
+      loading: false,
+      hasMore: true
+    };
+  }
+
+  const state = venueEvents[venueId];
+
+  if (state.loading || !state.hasMore) return;
+
+  state.loading = true;
+
+  const res = await api.get(`/venues/${venueId}/events`, {
+    params: {
+      limit: 5,
+      offset: state.offset
+    }
+  });
+
+  const newEvents = res.data;
+
+  if (newEvents.length < 5) {
+    state.hasMore = false;
+  }
+
+  state.events.push(...newEvents);
+  state.offset += 5;
+  state.loading = false;
+};
+const filteredVenues = computed(() => {
+  return venues.value.filter(v => v && v.eventCount > 0);
+});
+
+const handleScroll = (venueId, el) => {
+  if (!venueEvents[venueId]) return;
+
+  const state = venueEvents[venueId];
+
+  // Nếu đang loading hoặc hết dữ liệu thì không làm gì
+  if (state.loading || !state.hasMore) return;
+
+  const scrollLeft = el.scrollLeft;
+  const clientWidth = el.clientWidth;
+  const scrollWidth = el.scrollWidth;
+
+  // Nếu scroll gần tới cuối (cách 50px)
+  if (scrollLeft + clientWidth >= scrollWidth - 50) {
+    loadEvents(venueId);
+  }
+};
+
+onMounted(fetchVenue);
+
 </script>
 
 <template>
@@ -62,167 +115,204 @@ onMounted(fetchEvents);
     <a-card class="hero" :bordered="false">
       <div class="hero-title">Discover events</div>
       <div class="hero-sub">
-        Book tickets quickly, follow your favorite events, and manage your tickets.
+        Book tickets quickly, follow your favorite events, and manage your
+        tickets.
       </div>
     </a-card>
 
-    <a-space class="mt-16" wrap>
-      <a-segmented v-model:value="category" :options="categories" />
-    </a-space>
+    <a-spin :spinning="loading">
+      <template v-if="initialized">
+        <div v-for="(group, index) in filteredVenues" :key="group.id" class="venue-section">
+          <div class="venue-header">
+            <div class="venue-title">{{ group.name }}</div>
+          </div>
+          <div class="event-scroll" :ref="(el) => setScrollerRef(index, el)"
+            @scroll="(e) => handleScroll(group.id, e.target)">
+            <!-- Loading lần đầu -->
+            <a-spin v-if="!venueEvents[group.id]" />
 
-    <a-row :gutter="[16, 16]" class="mt-16">
-      <a-col
-        v-for="e in filteredEvents"
-        :key="e.id"
-        :xs="24"
-        :sm="12"
-        :md="8"
-        :lg="6"
-      >
-        <a-card
-          hoverable
-          class="event-card"
-          :body-style="{ padding: '12px' }"
-          @click="goDetail(e.id)"
-        >
-          <template #cover>
-            <img class="cover" :src="e.cover" :alt="e.title" />
-          </template>
+            <!-- Event list -->
+            <template v-else>
+              <div v-for="e in venueEvents[group.id].events" :key="e.id" class="event-card-wrapper">
+                <a-card hoverable class="event-card" :body-style="{ padding: '12px' }" @click="goDetail(e.id)">
+                  <template #cover>
+                    <img class="cover" :src="e.image" :alt="e.title" />
+                  </template>
 
-          <a-space direction="vertical" size="small" style="width: 100%">
-            <a-tag color="geekblue">{{ e.category }}</a-tag>
-            <div class="title">{{ e.title }}</div>
-            <div class="meta">
-              <span>{{ dateText(e.date) }}</span>
-              <span>•</span>
-              <span>{{ e.city }}</span>
-            </div>
-            <div class="price">Từ {{ priceText(e.priceFrom) }}</div>
-            <a-button type="primary" block @click.stop="goDetail(e.id)">
-              Xem chi tiết
-            </a-button>
-          </a-space>
-        </a-card>
-      </a-col>
-    </a-row>
+                  <a-space direction="vertical" size="small" style="width: 100%">
+                    <div class="title">{{ e.title }}</div>
+                  </a-space>
+                </a-card>
+              </div>
+
+              <!-- Loading khi scroll load thêm -->
+              <div v-if="venueEvents[group.id].loading" class="scroll-loading">
+                <a-spin size="small" />
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+    </a-spin>
   </div>
 </template>
 
 <style scoped>
 .home {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 40px;
 }
 
 /* HERO */
 .hero {
-  border-radius: 20px;
-  padding: 32px;
-  background: linear-gradient(
-    135deg,
-    #4f46e5,
-    #7c3aed,
-    #9333ea
-  );
+  border-radius: 28px;
+  padding: 48px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed, #9333ea);
   color: white;
-  box-shadow: 0 20px 40px rgba(124, 58, 237, 0.25);
+  box-shadow: 0 30px 60px rgba(124, 58, 237, 0.35);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  right: -80px;
+  top: -80px;
+  width: 300px;
+  height: 300px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
 }
 
 .hero-title {
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: -1px;
 }
 
 .hero-sub {
-  margin-top: 8px;
+  margin-top: 12px;
+  font-size: 16px;
   opacity: 0.9;
-  font-size: 15px;
+}
+
+/* SECTION */
+.venue-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.venue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.venue-title {
+  font-size: 22px;
+  font-weight: 700;
+  position: relative;
+  padding-left: 14px;
+}
+
+.venue-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 4px;
+  height: 18px;
+  background: #4f46e5;
+  border-radius: 4px;
+}
+
+/* SCROLL */
+.event-scroll {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  scroll-behavior: smooth;
+}
+
+.event-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.event-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6);
+  border-radius: 999px;
+}
+
+/* CARD WRAPPER */
+.event-card-wrapper {
+  min-width: 280px;
+  flex: 0 0 auto;
 }
 
 /* CARD */
 .event-card {
-  border-radius: 18px;
+  border-radius: 22px;
   overflow: hidden;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+  border: none;
+  transition: all 0.35s ease;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 .event-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+  transform: translateY(-8px);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.18);
 }
 
 /* IMAGE */
 .cover {
   width: 100%;
-  height: 170px;
+  height: 180px;
   object-fit: cover;
-  display: block;
   transition: transform 0.4s ease;
 }
 
 .event-card:hover .cover {
-  transform: scale(1.05);
+  transform: scale(1.08);
 }
 
 /* TITLE */
 .title {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.4;
   min-height: 44px;
 }
 
-/* META */
-.meta {
-  font-size: 13px;
-  color: rgba(0, 0, 0, 0.55);
+/* LOADING SCROLL */
+.scroll-loading {
   display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
+  align-items: center;
+  padding: 0 20px;
 }
 
-/* PRICE */
-.price {
-  font-weight: 800;
-  font-size: 16px;
-  color: #4f46e5;
-}
-
-/* BUTTON */
-:deep(.ant-btn-primary) {
-  border-radius: 10px;
-  font-weight: 600;
-  height: 38px;
-}
-
-/* CATEGORY SEGMENT */
-:deep(.ant-segmented) {
-  background: #f3f4f6;
-  padding: 4px;
-  border-radius: 999px;
-}
-
-:deep(.ant-segmented-item-selected) {
-  background: white;
-  border-radius: 999px;
-  font-weight: 600;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-}
-
+/* MOBILE */
 @media (max-width: 768px) {
-  .cover {
-    height: 200px;
+  .home {
+    padding: 16px;
   }
 
   .hero {
-    padding: 24px;
+    padding: 28px;
   }
 
   .hero-title {
-    font-size: 22px;
+    font-size: 24px;
+  }
+
+  .cover {
+    height: 200px;
   }
 }
 </style>

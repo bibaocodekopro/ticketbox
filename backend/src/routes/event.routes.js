@@ -6,11 +6,15 @@ const router = express.Router();
 // Lấy danh sách event (kèm venue, giá thấp nhất từ seat)
 router.get("/events", async (req, res) => {
   try {
+    const { venue, limit = 10, offset = 0 } = req.query;
     const events = await prisma.event.findMany({
+      where: venue ? { venue } : {},
       include: {
         venue: true,
         seat: true,
       },
+      take: Number(limit),
+      skip: Number(offset),
       orderBy: {
         startTime: "asc",
       },

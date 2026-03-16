@@ -10,13 +10,12 @@ const es = new Client({
 
 async function main() {
 
-    // const { body: exists } = await es.indices.exists({ index: "events" });
+    // const exists = await es.indices.exists({ index: "events" });
 
     // if (exists) {
-    //     await es.indices.delete({ index: "events" })
+    //     await es.indices.delete({ index: "events" });
     // }
 
-    // // Tạo index mới
     // await es.indices.create({
     //     index: "events",
     //     mappings: {
@@ -25,54 +24,55 @@ async function main() {
     //             description: { type: "text" },
     //             venue: { type: "keyword" },
     //             location: { type: "keyword" },
-    //             startTime: { type: "date" }
+    //             startTime: { type: "date" },
+    //             image: { type: "keyword" }
     //         }
     //     }
-    // })
+    // });
     // console.log("Elasticsearch index created")
-    
+
     const venue = await prisma.venue.create({
         data: {
-            name: "Công Viên Văn Hóa Đầm Sen",
-            location: "Quận 11, TP. Hồ Chí Minh"
+            name: "Sân Vận Động Thống Nhất",
+            location: "Quận 10, TP. Hồ Chí Minh"
         }
     });
 
     const titles = [
-        "Đêm Nhạc Thành Phố Trẻ",
-        "Saigon Summer Beats",
-        "Live Show Feel The Music",
-        "Acoustic Night Garden",
-        "HipHop & Rap Night",
-        "Lễ Hội EDM Ánh Sáng",
-        "Đêm Nhạc Pop Việt",
-        "Sunset Acoustic Session",
-        "Festival Âm Nhạc Đường Phố",
-        "DJ Party Neon Lights",
-        "Indie Music Weekend",
-        "Đêm Nhạc Ký Ức Thanh Xuân"
+        "Rock The City Night",
+        "Saigon EDM Takeover",
+        "Ballad In The Rain",
+        "Vietnam Indie Fest",
+        "HipHop Underground Live",
+        "Golden Voice Concert",
+        "Summer Fire Show",
+        "Neon Dance Arena",
+        "The Legends Live",
+        "Youth Explosion 2026",
+        "Street Music Culture",
+        "Moonlight Harmony"
     ];
 
     const artists = [
-        "Jack - J97",
-        "Soobin Hoàng Sơn",
-        "Trúc Nhân",
-        "Quân A.P",
-        "Pháo",
-        "Kay Trần",
-        "Đạt G",
-        "Hồ Ngọc Hà",
-        "Chi Pu",
-        "Suni Hạ Linh"
+        "Hà Anh Tuấn",
+        "Bích Phương",
+        "Wren Evans",
+        "Orange",
+        "RPT MCK",
+        "Obito",
+        "Grey D",
+        "Lâm Bảo Ngọc",
+        "JSOL",
+        "LyLy"
     ];
 
     const descriptions = [
-        "Một đêm âm nhạc trẻ trung với nhiều bản hit đình đám.",
-        "Không gian lễ hội sôi động với sân khấu ngoài trời.",
-        "Sự kiện âm nhạc kết hợp ánh sáng và hiệu ứng đặc biệt.",
-        "Đêm diễn mang đến nhiều phong cách âm nhạc khác nhau.",
-        "Khán giả sẽ được hòa mình vào bầu không khí âm nhạc cuồng nhiệt.",
-        "Một sự kiện giải trí hấp dẫn dành cho giới trẻ yêu âm nhạc."
+        "Đêm nhạc hội tụ những nghệ sĩ đang được yêu thích nhất hiện nay.",
+        "Sự kiện âm nhạc quy mô lớn với hàng nghìn khán giả tham dự.",
+        "Không gian sân vận động bùng nổ cùng hệ thống âm thanh đỉnh cao.",
+        "Chương trình mang đến những màn trình diễn độc quyền.",
+        "Sự kết hợp đa thể loại từ Ballad, R&B đến HipHop.",
+        "Một đêm nghệ thuật đầy cảm xúc và năng lượng."
     ];
 
     const randomInt = (min, max) =>
@@ -113,7 +113,8 @@ async function main() {
                 description: event.description,
                 startTime: event.startTime,
                 venue: venue.name,
-                location: venue.location
+                location: venue.location,
+                image: event.image
             }
         })
 

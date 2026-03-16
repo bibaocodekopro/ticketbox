@@ -4,7 +4,7 @@
       <div class="left-section">
         <div class="logo" @click="router.push('/')">TicketBox</div>
 
-        <input v-model="searchValue" type="text" placeholder="Search..." class="custom-search" />
+        <input v-model="searchValue" @keyup="HandleSearch" type="text" placeholder="Search..." class="custom-search" />
       </div>
 
       <!-- Menu cho Desktop -->
@@ -80,6 +80,7 @@ import {
   MenuOutlined,
 } from "@ant-design/icons-vue";
 import { message } from "ant-design-vue";
+import api from "@/api/axios";
 
 const router = useRouter();
 const route = useRoute();
@@ -122,6 +123,19 @@ onMounted(() => {
     useAuth().checkAuth();
   });
 });
+
+const HandleSearch = async () => {
+  if (searchValue.value.trim() == "") return;
+  try {
+    const res = await api.get("/events/search", {
+      params: { q: searchValue.value.trim() },
+    });
+
+  } catch (err) {
+    message.error("Something went wrong!");
+  }
+};
+
 </script>
 
 <style scoped>

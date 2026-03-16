@@ -1,5 +1,5 @@
 const app = require('./src/app');
-const prisma = require('./src/prisma');
+const prisma = require('./src/config/prisma');
 
 const PORT = process.env.PORT || 8000;
 

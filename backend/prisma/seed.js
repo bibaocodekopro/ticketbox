@@ -1,50 +1,78 @@
+// Create fake data for events, venues, and seats using Prisma and Elasticsearch
+
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { Client } = require('@elastic/elasticsearch');
+
+const es = new Client({
+    node: 'http://localhost:9200'
+});
 
 async function main() {
 
+    // const { body: exists } = await es.indices.exists({ index: "events" });
+
+    // if (exists) {
+    //     await es.indices.delete({ index: "events" })
+    // }
+
+    // // Tạo index mới
+    // await es.indices.create({
+    //     index: "events",
+    //     mappings: {
+    //         properties: {
+    //             title: { type: "text" },
+    //             description: { type: "text" },
+    //             venue: { type: "keyword" },
+    //             location: { type: "keyword" },
+    //             startTime: { type: "date" }
+    //         }
+    //     }
+    // })
+    // console.log("Elasticsearch index created")
+    
     const venue = await prisma.venue.create({
         data: {
-            name: "Sân Vận Động Sài Gòn",
-            location: "TP. Hồ Chí Minh"
+            name: "Công Viên Văn Hóa Đầm Sen",
+            location: "Quận 11, TP. Hồ Chí Minh"
         }
     });
 
     const titles = [
-        "Đêm Nhạc Mùa Xuân",
-        "Live Concert Sương Mai",
-        "Đại Nhạc Hội Mùa Hè",
-        "Acoustic Chill Cuối Tuần",
-        "Rock Bùng Nổ 2026",
-        "Đêm Jazz & Rượu Vang",
-        "Chill Lo-fi Tối Thứ 7",
-        "Hòa Nhạc Cổ Điển",
-        "Open Air Festival",
-        "DJ Night Countdown",
-        "Indie Showcase Việt",
-        "Đêm Nhạc Hoài Niệm 8x 9x"
+        "Đêm Nhạc Thành Phố Trẻ",
+        "Saigon Summer Beats",
+        "Live Show Feel The Music",
+        "Acoustic Night Garden",
+        "HipHop & Rap Night",
+        "Lễ Hội EDM Ánh Sáng",
+        "Đêm Nhạc Pop Việt",
+        "Sunset Acoustic Session",
+        "Festival Âm Nhạc Đường Phố",
+        "DJ Party Neon Lights",
+        "Indie Music Weekend",
+        "Đêm Nhạc Ký Ức Thanh Xuân"
     ];
 
     const artists = [
-        "Sơn Tùng M-TP",
-        "Hà Anh Tuấn",
-        "Vũ.",
-        "Tóc Tiên",
-        "Đen Vâu",
-        "Min",
-        "Noo Phước Thịnh",
-        "Hoàng Dũng",
-        "Da LAB",
-        "Chillies"
+        "Jack - J97",
+        "Soobin Hoàng Sơn",
+        "Trúc Nhân",
+        "Quân A.P",
+        "Pháo",
+        "Kay Trần",
+        "Đạt G",
+        "Hồ Ngọc Hà",
+        "Chi Pu",
+        "Suni Hạ Linh"
     ];
 
     const descriptions = [
-        "Một đêm nhạc đầy cảm xúc với những bản hit được yêu thích nhất.",
-        "Sự kiện âm nhạc hoành tráng với hệ thống âm thanh và ánh sáng đỉnh cao.",
-        "Không gian âm nhạc ngoài trời cực chill dành cho giới trẻ.",
-        "Trải nghiệm âm nhạc sống động cùng nghệ sĩ hàng đầu Việt Nam.",
-        "Đêm diễn đặc biệt chỉ tổ chức duy nhất một lần trong năm.",
-        "Hòa mình vào không khí sôi động cùng hàng ngàn khán giả."
+        "Một đêm âm nhạc trẻ trung với nhiều bản hit đình đám.",
+        "Không gian lễ hội sôi động với sân khấu ngoài trời.",
+        "Sự kiện âm nhạc kết hợp ánh sáng và hiệu ứng đặc biệt.",
+        "Đêm diễn mang đến nhiều phong cách âm nhạc khác nhau.",
+        "Khán giả sẽ được hòa mình vào bầu không khí âm nhạc cuồng nhiệt.",
+        "Một sự kiện giải trí hấp dẫn dành cho giới trẻ yêu âm nhạc."
     ];
 
     const randomInt = (min, max) =>
@@ -77,6 +105,18 @@ async function main() {
             }
         });
 
+        await es.index({
+            index: "events",
+            id: event.id.toString(),
+            document: {
+                title: event.title,
+                description: event.description,
+                startTime: event.startTime,
+                venue: venue.name,
+                location: venue.location
+            }
+        })
+
         // 🎫 Tạo số ghế random cho mỗi event (50–150 ghế)
         const totalSeats = randomInt(50, 150);
 
@@ -96,8 +136,14 @@ async function main() {
 
         console.log(`Created event ${i + 1} with ${totalSeats} seats`);
     }
-
+    await es.indices.refresh({ index: "events" });
     console.log("🔥 Seed random done!");
 }
 
-main();
+main()
+    .catch(e => {
+        console.error(e);
+    })
+    .finally(async () => {
+        await prisma.$disconnect();
+    });

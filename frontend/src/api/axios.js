@@ -13,9 +13,6 @@ api.interceptors.request.use((config) => {
     // Lấy token từ cookie thay vì localStorage
     const token = Cookies.get('token')
 
-    // Vẫn giữ cả 2 cách để test
-    console.log('Token from cookie:', token)
-
     if (token) {
         config.headers.Authorization = `Bearer ${token}`
     }

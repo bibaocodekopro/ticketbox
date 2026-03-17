@@ -27,8 +27,8 @@ const getEventById = async (req, res) => {
 
 const searchEvents = async (req, res) => {
     try {
-        const { q } = req.query;
-        const events = await eventService.searchEvents(q);
+        const { q, limit = 10, offset = 0 } = req.query;
+        const events = await eventService.searchEvents(q,  limit, offset );
         return res.json(events);
     } catch (error) {
         console.error(error);

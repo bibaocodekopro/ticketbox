@@ -88,26 +88,34 @@ const getEventById = async (id) => {
     }
 }
 
-const searchEvents = async (q) => {
+const searchEvents = async (q, limit = 10, offset = 0) => {
     try {
         const result = await es.search({
             index: "events",
+            from: offset,   // offset
+            size: limit,    // limit
             query: {
                 match: {
-                    title: q
+                    title: {
+                        query: q,
+                        fuzziness: "AUTO" // search gần đúng (vd: dat -> đạt)
+                    }
                 }
             }
         });
 
         const events = result.hits.hits.map(hit => ({
             id: hit._id,
-            ...hit._source
+            title: hit._source.title,
+            image: hit._source.image,
+            location: hit._source.location,
         }));
 
         return events;
+
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Failed to fetch events" });
+        console.error("Elasticsearch search error:", error);
+        throw new Error("Failed to fetch events");
     }
-}
+};
 module.exports = { getEvents, getEventById, searchEvents };

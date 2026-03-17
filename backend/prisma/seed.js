@@ -33,46 +33,46 @@ async function main() {
 
     const venue = await prisma.venue.create({
         data: {
-            name: "Sân Vận Động Thống Nhất",
-            location: "Quận 10, TP. Hồ Chí Minh"
+            name: "Công Viên Văn Hóa Đầm Sen",
+            location: "Quận 11, TP. Hồ Chí Minh"
         }
     });
 
     const titles = [
-        "Rock The City Night",
-        "Saigon EDM Takeover",
-        "Ballad In The Rain",
-        "Vietnam Indie Fest",
-        "HipHop Underground Live",
-        "Golden Voice Concert",
-        "Summer Fire Show",
-        "Neon Dance Arena",
-        "The Legends Live",
-        "Youth Explosion 2026",
-        "Street Music Culture",
-        "Moonlight Harmony"
+        "Saigon Music Carnival",
+        "Electric Summer Festival",
+        "Chill Vibes Acoustic",
+        "Urban Beat Concert",
+        "City Sound Explosion",
+        "Night Of The Stars",
+        "Saigon Live Arena",
+        "Festival Of Lights",
+        "Young Talent Showcase",
+        "Mega Music Party",
+        "Saigon Soundwave",
+        "Rhythm City Live"
     ];
 
     const artists = [
-        "Hà Anh Tuấn",
-        "Bích Phương",
-        "Wren Evans",
-        "Orange",
-        "RPT MCK",
-        "Obito",
-        "Grey D",
-        "Lâm Bảo Ngọc",
+        "Đạt G",
+        "AMEE",
+        "HIEUTHUHAI",
+        "tlinh",
+        "Karik",
         "JSOL",
-        "LyLy"
+        "LyLy",
+        "Vũ",
+        "Obito",
+        "RPT Gonzo"
     ];
 
     const descriptions = [
-        "Đêm nhạc hội tụ những nghệ sĩ đang được yêu thích nhất hiện nay.",
-        "Sự kiện âm nhạc quy mô lớn với hàng nghìn khán giả tham dự.",
-        "Không gian sân vận động bùng nổ cùng hệ thống âm thanh đỉnh cao.",
-        "Chương trình mang đến những màn trình diễn độc quyền.",
-        "Sự kết hợp đa thể loại từ Ballad, R&B đến HipHop.",
-        "Một đêm nghệ thuật đầy cảm xúc và năng lượng."
+        "Sự kiện âm nhạc ngoài trời với không gian rộng lớn và sôi động.",
+        "Đêm diễn quy tụ nhiều nghệ sĩ trẻ đang được yêu thích.",
+        "Chương trình âm nhạc hoành tráng với hệ thống âm thanh ánh sáng hiện đại.",
+        "Một đêm nhạc đầy năng lượng dành cho cộng đồng yêu âm nhạc.",
+        "Sự kiện đặc biệt mang đến những màn trình diễn live bùng nổ.",
+        "Không gian giải trí kết hợp âm nhạc, ánh sáng và hiệu ứng sân khấu đặc sắc."
     ];
 
     const randomInt = (min, max) =>

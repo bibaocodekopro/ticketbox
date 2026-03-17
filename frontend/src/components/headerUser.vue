@@ -3,8 +3,25 @@
     <div class="header-inner">
       <div class="left-section">
         <div class="logo" @click="router.push('/')">TicketBox</div>
+        <div class="search-wrapper" ref="searchWrapper">
+          <input v-model="searchValue" @keyup="HandleSearch" @click="HandleSearch" type="text" placeholder="Search..."
+            class="custom-search" />
+          <div v-if="showDropdown && searchResults.length" class="search-dropdown"  @scroll="handleScroll"  ref="dropdownRef">
+            <div v-for="item in searchResults" :key="item.id" class="search-item" >
+              <img :src="item.image" class="search-img" />
 
-        <input v-model="searchValue" @keyup="HandleSearch" type="text" placeholder="Search..." class="custom-search" />
+              <div class="search-info">
+                <div class="search-title">
+                  {{ item.title }}
+                </div>
+
+                <div class="search-location">
+                  {{ item.location }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Menu cho Desktop -->
@@ -70,7 +87,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, onUnmounted  } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuth } from "@/composables/useAuth";
 import {
@@ -88,6 +105,23 @@ const { user, isAuthenticated, logout } = useAuth();
 
 const selectedKeys = ref(["home"]);
 const searchValue = ref("");
+const searchWrapper = ref(null);
+const handleClickOutside = (event) => {
+  if (
+    searchWrapper.value &&
+    !searchWrapper.value.contains(event.target)
+  ) {
+    showDropdown.value = false;
+  }
+};
+
+onMounted(() => {
+  document.addEventListener("click", handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
 
 watch(
   () => route.path,
@@ -116,6 +150,12 @@ const handleLogout = async () => {
   }
 };
 
+const limit = 10;
+const offset = ref(0);
+const loading = ref(false);
+const hasMore = ref(true);
+
+
 // Lắng nghe sự kiện login từ các component khác
 onMounted(() => {
   window.addEventListener("auth-change", () => {
@@ -123,22 +163,142 @@ onMounted(() => {
     useAuth().checkAuth();
   });
 });
-
+const showDropdown = ref(false);
+const searchResults = ref([]);
 const HandleSearch = async () => {
-  if (searchValue.value.trim() == "") return;
-  try {
-    const res = await api.get("/events/search", {
-      params: { q: searchValue.value.trim() },
-    });
+  if (searchValue.value.trim() == "") {
+    searchResults.value = [];
+    showDropdown.value = false;
+    return;
+  }
 
+  try {
+    offset.value = 0;
+    hasMore.value = true;
+    const res = await api.get("/events/search", {
+       params: {
+        q: searchValue.value.trim(),
+        limit,
+        offset: offset.value,
+      },
+    });
+    searchResults.value = res.data || [];
+    showDropdown.value = true;
+     if (res.data.length < limit) {
+      hasMore.value = false;
+    }
   } catch (err) {
+    console.log(err);
     message.error("Something went wrong!");
   }
 };
+const loadMore = async () => {
+  if (loading.value || !hasMore.value) return;
 
+  loading.value = true;
+  offset.value += limit;
+
+  try {
+    const res = await api.get("/events/search", {
+      params: {
+        q: searchValue.value.trim(),
+        limit,
+        offset: offset.value,
+      },
+    });
+
+    searchResults.value = [...searchResults.value, ...res.data];
+
+    if (res.data.length < limit) {
+      hasMore.value = false;
+    }
+
+  } catch (err) {
+    console.log(err);
+  }
+
+  loading.value = false;
+};
+
+const dropdownRef = ref(null);
+
+const handleScroll = () => {
+  const el = dropdownRef.value;
+  if (!el) return;
+
+  const threshold = 50;
+
+  if (el.scrollTop + el.clientHeight >= el.scrollHeight - threshold) {
+    loadMore();
+  }
+};
 </script>
 
 <style scoped>
+.search-wrapper {
+  position: relative;
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 45px;
+  left: 0;
+  width: 420px;
+
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #eee;
+
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+
+  max-height: 420px;
+  overflow-y: auto;
+  z-index: 999;
+
+  animation: dropdownFade 0.15s ease;
+}
+
+@keyframes dropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.search-item {
+  display: flex;
+  padding: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.search-item:hover {
+  background: #f5f5f5;
+}
+
+.search-img {
+  width: 60px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-right: 10px;
+}
+
+.search-title {
+  font-weight: 600;
+  color: rgb(66, 66, 66);
+}
+
+.search-location {
+  font-size: 12px;
+  color: #8a8a8a;
+}
+
 .header {
   position: sticky;
   top: 0;

@@ -1,16 +1,12 @@
-
 const prisma = require("../config/prisma");
-const { Client } = require("@elastic/elasticsearch");
-const es = new Client({
-    node: "http://localhost:9200",
-});
+
 const getEvents = async ({ venue, limit, offset }) => {
     try {
         const events = await prisma.event.findMany({
             where: venue ? { venue } : {},
             include: {
                 venue: true,
-                seat: true,
+                seats: true,
             },
             take: Number(limit),
             skip: Number(offset),
@@ -21,8 +17,8 @@ const getEvents = async ({ venue, limit, offset }) => {
 
         const data = events.map((e) => {
             const minPrice =
-                e.seat && e.seat.length
-                    ? Math.min(...e.seat.map((s) => Number(s.price)))
+                e.seats && e.seats.length
+                    ? Math.min(...e.seats.map((s) => Number(s.price)))
                     : null;
 
             return {
@@ -43,23 +39,24 @@ const getEvents = async ({ venue, limit, offset }) => {
         throw new Error("Failed to fetch events");
     }
 };
+
 const getEventById = async (id) => {
     try {
         const e = await prisma.event.findUnique({
             where: { id },
             include: {
                 venue: true,
-                seat: true,
+                seats: true,
             },
         });
 
         if (!e) {
-            return res.status(404).json({ message: "Event not found" });
+            return null;
         }
 
         const minPrice =
-            e.seat && e.seat.length
-                ? Math.min(...e.seat.map((s) => Number(s.price)))
+            e.seats && e.seats.length
+                ? Math.min(...e.seats.map((s) => Number(s.price)))
                 : null;
 
         const event = {
@@ -76,46 +73,58 @@ const getEventById = async (id) => {
                 {
                     name: "Ghế tiêu chuẩn",
                     price: minPrice,
-                    available: e.seat?.length || 0,
+                    available: e.seats?.length || 0,
                 },
             ],
         };
 
-        return res.json(event);
+        return event;
     } catch (error) {
         console.error(error);
-        throw new Error("Failed to fetch events");
+        throw new Error("Failed to fetch event detail");
     }
-}
+};
 
 const searchEvents = async (q, limit = 10, offset = 0) => {
     try {
-        const result = await es.search({
-            index: "events",
-            from: offset,   // offset
-            size: limit,    // limit
-            query: {
-                match: {
-                    title: {
-                        query: q,
-                        fuzziness: "AUTO" // search gần đúng (vd: dat -> đạt)
-                    }
-                }
-            }
+        const events = await prisma.event.findMany({
+            where: {
+                title: {
+                    contains: q,
+                },
+            },
+            include: {
+                venue: true,
+                seats: true,
+            },
+            take: Number(limit),
+            skip: Number(offset),
+            orderBy: {
+                startTime: "asc",
+            },
         });
 
-        const events = result.hits.hits.map(hit => ({
-            id: hit._id,
-            title: hit._source.title,
-            image: hit._source.image,
-            location: hit._source.location,
-        }));
+        const data = events.map((e) => {
+            const minPrice =
+                e.seats && e.seats.length
+                    ? Math.min(...e.seats.map((s) => Number(s.price)))
+                    : null;
 
-        return events;
+            return {
+                id: e.id,
+                title: e.title,
+                image: e.image,
+                location: e.venue?.location || "",
+                venue: e.venue?.name || "",
+                priceFrom: minPrice,
+            };
+        });
 
+        return data;
     } catch (error) {
-        console.error("Elasticsearch search error:", error);
-        throw new Error("Failed to fetch events");
+        console.error("Search error:", error);
+        throw new Error("Failed to search events");
     }
 };
+
 module.exports = { getEvents, getEventById, searchEvents };

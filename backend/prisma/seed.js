@@ -1,42 +1,31 @@
-// Create fake data for events, venues, and seats using Prisma and Elasticsearch
-
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { Client } = require('@elastic/elasticsearch');
-
-const es = new Client({
-    node: 'http://localhost:9200'
-});
 
 async function main() {
+    // Xóa dữ liệu cũ
+    await prisma.orderItem.deleteMany();
+    await prisma.payment.deleteMany();
+    await prisma.order.deleteMany();
+    await prisma.seat.deleteMany();
+    await prisma.event.deleteMany();
+    await prisma.venue.deleteMany();
+    await prisma.user.deleteMany();
 
-    // const exists = await es.indices.exists({ index: "events" });
+    console.log("Đã xóa dữ liệu cũ ✅");
 
-    // if (exists) {
-    //     await es.indices.delete({ index: "events" });
-    // }
-
-    // await es.indices.create({
-    //     index: "events",
-    //     mappings: {
-    //         properties: {
-    //             title: { type: "text" },
-    //             description: { type: "text" },
-    //             venue: { type: "keyword" },
-    //             location: { type: "keyword" },
-    //             startTime: { type: "date" },
-    //             image: { type: "keyword" }
-    //         }
-    //     }
-    // });
-    // console.log("Elasticsearch index created")
-
-    const venue = await prisma.venue.create({
-        data: {
-            name: "Công Viên Văn Hóa Đầm Sen",
-            location: "Quận 11, TP. Hồ Chí Minh"
-        }
+    // Tạo venue mẫu
+    const venues = await prisma.venue.createMany({
+        data: [
+            { name: "Sân Vận Động Thống Nhất", location: "Quận 10, TP. Hồ Chí Minh" },
+            { name: "Sân Vận Động Quân Khu 7", location: "Quận Tân Bình, TP. Hồ Chí Minh" },
+            { name: "Nhà Thi Đấu Phú Thọ", location: "Quận 11, TP. Hồ Chí Minh" },
+            { name: "Nhà Hát Hòa Bình", location: "Quận 10, TP. Hồ Chí Minh" },
+            { name: "Công Viên Văn Hóa Đầm Sen", location: "Quận 11, TP. Hồ Chí Minh" },
+            { name: "Galaxy Cinema", location: "Quận 1, TP. Hồ Chí Minh" },
+        ]
     });
+
+    console.log("Đã tạo venues ✅");
 
     const titles = [
         "Saigon Music Carnival",
@@ -54,16 +43,10 @@ async function main() {
     ];
 
     const artists = [
-        "Đạt G",
-        "AMEE",
-        "HIEUTHUHAI",
-        "tlinh",
-        "Karik",
-        "JSOL",
-        "LyLy",
-        "Vũ",
-        "Obito",
-        "RPT Gonzo"
+        "Đạt G", "AMEE", "HIEUTHUHAI", "tlinh", "Karik",
+        "JSOL", "LyLy", "Vũ", "Obito", "RPT Gonzo",
+        "Binz", "Mỹ Tâm", "Sơn Tùng M-TP", "Grey D", "Wren Evans",
+        "Vũ Cát Tường", "Trúc Nhân", "Hứa Kim Tuyền", "Bray", "MCK"
     ];
 
     const descriptions = [
@@ -80,10 +63,15 @@ async function main() {
 
     const now = new Date();
 
-    // 🎵 Tạo 50 event random
+    // Lấy danh sách venue vừa tạo
+    const allVenues = await prisma.venue.findMany();
+    if (allVenues.length === 0) {
+        console.error("Không có venue nào!");
+        return;
+    }
+
+    // Tạo 100 event random
     for (let i = 0; i < 100; i++) {
-
-
         const addDays = randomInt(1, 120);
         const addHours = randomInt(18, 22);
 
@@ -94,33 +82,20 @@ async function main() {
         const randomTitle = titles[randomInt(0, titles.length - 1)];
         const randomArtist = artists[randomInt(0, artists.length - 1)];
         const randomDesc = descriptions[randomInt(0, descriptions.length - 1)];
+        const randomVenue = allVenues[randomInt(0, allVenues.length - 1)];
 
         const event = await prisma.event.create({
             data: {
                 title: `${randomTitle} - ${randomArtist} #${i + 1}`,
                 description: `${randomDesc} Sự góp mặt của ${randomArtist} hứa hẹn sẽ mang đến một đêm diễn bùng nổ.`,
                 startTime: start,
-                venueId: venue.id,
+                venueId: randomVenue.id,
                 image: `https://picsum.photos/seed/event-${i}/1200/600`
             }
         });
 
-        await es.index({
-            index: "events",
-            id: event.id.toString(),
-            document: {
-                title: event.title,
-                description: event.description,
-                startTime: event.startTime,
-                venue: venue.name,
-                location: venue.location,
-                image: event.image
-            }
-        })
-
-        // 🎫 Tạo số ghế random cho mỗi event (50–150 ghế)
+        // Tạo số ghế random cho mỗi event (50–150 ghế)
         const totalSeats = randomInt(50, 150);
-
         const seats = [];
 
         for (let j = 1; j <= totalSeats; j++) {
@@ -131,14 +106,33 @@ async function main() {
             });
         }
 
-        await prisma.seat.createMany({
-            data: seats
-        });
-
+        await prisma.seat.createMany({ data: seats });
         console.log(`Created event ${i + 1} with ${totalSeats} seats`);
     }
-    await es.indices.refresh({ index: "events" });
-    console.log("🔥 Seed random done!");
+
+    // Tạo user mẫu
+    const bcrypt = require('bcrypt');
+    const hashedPassword = await bcrypt.hash('123456', 10);
+
+    await prisma.user.create({
+        data: {
+            email: 'demo@ticketbox.com',
+            password: hashedPassword,
+            role: 'USER'
+        }
+    });
+
+    await prisma.user.create({
+        data: {
+            email: 'admin@ticketbox.com',
+            password: hashedPassword,
+            role: 'ADMIN'
+        }
+    });
+
+    console.log("🔥 Seed random done! 100 events created.");
+    console.log("📧 Demo user: demo@ticketbox.com / 123456");
+    console.log("📧 Admin user: admin@ticketbox.com / 123456");
 }
 
 main()

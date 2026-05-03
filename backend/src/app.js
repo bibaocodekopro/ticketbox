@@ -5,15 +5,21 @@ const app = express();
 const authRoutes = require("./routes/auth.routes");
 const eventRoutes = require("./routes/event.routes");
 const venueRoutes = require("./routes/venue.routes");
-// Cấu hình CORS chi tiết - ĐÂY LÀ PHẦN QUAN TRỌNG CẦN SỬA
+const orderRoutes = require("./routes/order.routes");
+const { health } = require("./utils/response");
+
+// CORS - open for development
 app.use(cors({
-    origin: 'http://localhost:5173',  // Chỉ định chính xác frontend URL (Vue default port)
-    credentials: true,                 // Cho phép gửi/nhận cookie
+    origin: true,
+    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 app.use(express.json());
+
+// Health check
+app.get('/health', health);
 
 // Route test
 app.get('/', (req, res) => {
@@ -24,5 +30,6 @@ app.get('/', (req, res) => {
 app.use("/api", authRoutes);
 app.use("/api", eventRoutes);
 app.use("/api", venueRoutes);
+app.use("/api", orderRoutes);
 
 module.exports = app;
